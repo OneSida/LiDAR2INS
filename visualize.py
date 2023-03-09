@@ -45,15 +45,16 @@ def transform_lidar_to_imu(extrinsic_file, input_file, output_file):
     fout.close()
 
 
-def plot_pcd(extrinsic_file, ins_file, output_pcd_file):
+def plot_pcd(extrinsic_file, ins_file, output_pcd_file, downsample=200):
     final_T = np.array(load_extrinsic(extrinsic_file))
 
     fin = open(ins_file)
+    global_homo_points = []
     for line in fin:
         line = line.strip().split(' ')
         local_pcd_file = './data/top_center_lidar/{}.pcd'.format(line[0])
         pcd = o3d.io.read_point_cloud(local_pcd_file)
-        points = np.array(pcd.points)[::10, ...]
+        points = np.array(pcd.points)[::downsample, ...]
         local_homo_points = np.concatenate((points.T, np.ones((1, points.shape[0]))))
 
         imu_pose = np.zeros((4, 4))
@@ -64,11 +65,12 @@ def plot_pcd(extrinsic_file, ins_file, output_pcd_file):
             imu_pose[row, col] = float(item)
         lidar_pose = np.dot(final_T, np.dot(imu_pose, np.linalg.inv(final_T)))
 
-        global_homo_points = np.dot(lidar_pose, local_homo_points)
-        fusion_pcd = o3d.geometry.PointCloud()
-        fusion_pcd.points = o3d.utility.Vector3dVector(global_homo_points[:3, :].T)
-        o3d.io.write_point_cloud(output_pcd_file, fusion_pcd)
-        # o3d.visualization.draw_geometries([fusion_pcd])
+        global_homo_points.append(np.dot(lidar_pose, local_homo_points))
+    global_homo_points = np.concatenate(global_homo_points, axis=1)
+    fusion_pcd = o3d.geometry.PointCloud()
+    fusion_pcd.points = o3d.utility.Vector3dVector(global_homo_points[:3, :].T)
+    o3d.io.write_point_cloud(output_pcd_file, fusion_pcd)
+    # o3d.visualization.draw_geometries([fusion_pcd])
 
     fin.close()
 
