@@ -162,7 +162,7 @@ void Calibrator::Calibration(const std::string lidar_path,
       }
     }
     // display
-    // displayVoxelMap(surf_map);
+    displayVoxelMap(surf_map);
     // optimize delta R, t1, t2
     if (i < turn / 2) {
       optimizeDeltaTrans(surf_map, corn_map, 4, deltaRPY, deltaT);
